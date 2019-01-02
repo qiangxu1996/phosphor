@@ -1739,28 +1739,8 @@ public final class String implements Serializable, Comparable<String>,
         return value ? "true" : "false"; //$NON-NLS-1$ //$NON-NLS-2$
     }
 
-    /**
-     * Returns whether the characters in the StringBuffer {@code strbuf} are the
-     * same as those in this string.
-     * 
-     * @param strbuf
-     *            the StringBuffer to compare this string to.
-     * @return {@code true} if the characters in {@code strbuf} are identical to
-     *         those in this string. If they are not, {@code false} will be
-     *         returned.
-     * @throws NullPointerException
-     *             if {@code strbuf} is {@code null}.
-     * @since 1.4
-     */
     public boolean contentEquals(StringBuffer strbuf) {
-        synchronized (strbuf) {
-            int size = strbuf.length();
-            if (count != size) {
-                return false;
-            }
-            return regionMatches(0, new String(0, size, strbuf.getValue()), 0,
-                    size);
-        }
+		return false;
     }
 
     /**
