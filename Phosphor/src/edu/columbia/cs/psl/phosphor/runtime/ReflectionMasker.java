@@ -4,12 +4,10 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.Arrays;
 
 import org.objectweb.asm.Type;
 
 import sun.misc.Unsafe;
-import sun.reflect.ReflectionFactory;
 import edu.columbia.cs.psl.phosphor.Configuration;
 import edu.columbia.cs.psl.phosphor.Instrumenter;
 import edu.columbia.cs.psl.phosphor.TaintUtils;
@@ -1431,98 +1429,6 @@ public class ReflectionMasker {
 		Field[] retz = new Field[ret.size()];
 		ret.toArray(retz);
 		return retz;
-	}
-
-	private static ReflectionFactory getReflectionFactory() {
-		if (reflectionFactory == null) {
-			reflectionFactory = java.security.AccessController.doPrivileged(new sun.reflect.ReflectionFactory.GetReflectionFactoryAction());
-		}
-		return reflectionFactory;
-	}
-
-	private static ReflectionFactory reflectionFactory;
-
-	public static Method[] copyMethods(Method[] arg) {
-		//		if(arg == null || arg.length>0)
-		//			throw new IllegalStateException("this is disabled for testing");
-		//		ArrayList<Method> ret = new ArrayList<Method>();
-		//		ReflectionFactory fact = getReflectionFactory();
-		//		for (Method f : arg) {
-		//			final char[] chars = f.getName().toCharArray();
-		//			boolean match = false;
-		//			if (chars.length == GETSETLEN) {
-		//				match = true;
-		//				for (int i = 3; i < GETSETLEN; i++) {
-		//					if (chars[i] != GETSETCHARS[i]) {
-		//						match = false;
-		//						break;
-		//					}
-		//				}
-		//			}
-		//			if (!match && chars.length > SUFFIX_LEN) {
-		//				int x = 0;
-		//				for (int i = chars.length - SUFFIX_LEN; i < chars.length; i++) {
-		//					if (chars[i] != SUFFIXCHARS[x]) {
-		//						ret.add(fact.copyMethod(f));
-		//						break;
-		//					}
-		//					x++;
-		//				}
-		//			} else if (!match) {
-		//				ret.add(fact.copyMethod(f));
-		//			}
-		//		}
-		//		Method[] retz = new Method[ret.size()];
-		//		ret.toArray(retz);
-		//		return retz;
-		return arg;
-	}
-
-	@SuppressWarnings("rawtypes")
-	public static Constructor[] copyConstructors(Constructor[] arg) {
-		//		ArrayList<Constructor> ret = new ArrayList<Constructor>();
-		//		ReflectionFactory fact = getReflectionFactory();
-		//
-		//		for (Constructor f : arg) {
-		//			Class[] params = f.getParameterTypes();
-		//			if (params.length > 0
-		//					&& (params[params.length - 1].getName().equals("edu.columbia.cs.psl.phosphor.runtime.TaintSentinel") || params[params.length - 1].getName().equals(
-		//							"edu.columbia.cs.psl.phosphor.runtime.UninstrumentedTaintSentinel"))) {
-		//
-		//			} else
-		//				ret.add(fact.copyConstructor(f));
-		//		}
-		//		Constructor[] retz = new Constructor[ret.size()];
-		//		ret.toArray(retz);
-		//		return retz;
-		return arg;
-	}
-
-	@SuppressWarnings("rawtypes")
-	public static Field[] copyFields(Field[] arg) {
-		//		ArrayList<Field> ret = new ArrayList<Field>();
-		//		ReflectionFactory fact = getReflectionFactory();
-		//		//        System.out.println("Fields in : " +Arrays.toString(arg));
-		//		for (Field f : arg) {
-		//			final char[] chars = f.getName().toCharArray();
-		//			if (chars.length >= FIELDSUFFIXLEN) {
-		//				int x = 0;
-		//				for (int i = chars.length - FIELDSUFFIXLEN; i < chars.length; i++) {
-		//					if (chars[i] != FIELDSUFFIXCHARS[x]) {
-		//						ret.add(fact.copyField(f));
-		//						break;
-		//					}
-		//					x++;
-		//				}
-		//			} else if (!chars.equals("taint")) {
-		//				ret.add(fact.copyField(f));
-		//			}
-		//		}
-		//		Field[] retz = new Field[ret.size()];
-		//		ret.toArray(retz);
-		//		//        System.out.println("Fields out : " +Arrays.toString(retz));
-		//		return retz;
-		return arg;
 	}
 
 	static final int SUFFIX_LEN = "$$PHOSPHORTAGGED".length();

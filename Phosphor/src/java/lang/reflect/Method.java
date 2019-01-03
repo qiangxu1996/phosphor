@@ -1,7 +1,5 @@
 package java.lang.reflect;
 
-import sun.reflect.MethodAccessor;
-
 import java.lang.annotation.Annotation;
 
 public final class Method extends AccessibleObject implements GenericDeclaration, Member {
@@ -80,13 +78,6 @@ public final class Method extends AccessibleObject implements GenericDeclaration
 		return false;
 	}
 
-	MethodAccessor getMethodAccessor() {
-		return null;
-	}
-
-	void setMethodAccessor(MethodAccessor accessor) {
-	}
-
 	public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
 		return null;
 	}
@@ -117,14 +108,6 @@ public final class Method extends AccessibleObject implements GenericDeclaration
 
 	public Annotation[] getAnnotations() {
 		return super.getAnnotations();
-	}
-
-	void checkAccess(Class<?> caller, Class<?> clazz, Object obj, int modifiers) throws IllegalAccessException {
-		super.checkAccess(caller, clazz, obj, modifiers);
-	}
-
-	void slowCheckMemberAccess(Class<?> caller, Class<?> clazz, Object obj, int modifiers, Class<?> targetClass) throws IllegalAccessException {
-		super.slowCheckMemberAccess(caller, clazz, obj, modifiers, targetClass);
 	}
 
 	protected Object clone() throws CloneNotSupportedException {
