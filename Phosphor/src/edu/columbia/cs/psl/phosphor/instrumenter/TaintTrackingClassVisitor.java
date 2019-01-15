@@ -18,6 +18,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
@@ -245,6 +246,7 @@ public class TaintTrackingClassVisitor extends ClassVisitor {
 	}
 
 	private HashMap<String, Method> superMethodsToOverride = new HashMap<String, Method>();
+	private HashSet<MethodNode> wrapperMethodsToAdd = new HashSet<>();
 	HashMap<MethodNode, MethodNode> forMore = new HashMap<MethodNode, MethodNode>();
 	@Override
 	public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
@@ -367,7 +369,7 @@ public class TaintTrackingClassVisitor extends ClassVisitor {
 					addSentinel = true;
 				}
 				newArgTypes.add(t);
-				if (t.getDescriptor().contains("ControlTaintTagStack") || t.getDescriptor().contains("edu/columbia/cs/psl/phosphor/struct") || t.getDescriptor().contains("Ledu/columbia/cs/psl/phosphor/runtime/Taint")) {
+				if (t.getDescriptor().contains("ControlTaintTagStack") || t.getDescriptor().contains("edu/columbia/cs/psl/phosphor/struct") || t.getDescriptor().contains("Ledu/columbia/cs/psl/phosphor/runtime/Taint") || TaintUtils.isPrimitiveType(t)) {
 					final MethodVisitor cmv = super.visitMethod(access, name, desc, signature, exceptions);
 					MethodNode fullMethod = new MethodNode(Opcodes.ASM6, access,name,desc,signature,exceptions){
 						@Override
@@ -468,7 +470,7 @@ public class TaintTrackingClassVisitor extends ClassVisitor {
 			MethodVisitor nextMV;
 			{
 //				ImplicitTaintRemoverMV implicitCleanup = new ImplicitTaintRemoverMV(access, className, name, desc, signature, exceptions, boxFixer, analyzer);
-				tmv = new TaintPassingMV(boxFixer, access, className, name, newDesc, signature, exceptions, desc, analyzer,rootmV);
+				tmv = new TaintPassingMV(boxFixer, access, className, name, newDesc, signature, exceptions, desc, analyzer,rootmV,wrapperMethodsToAdd);
 				tmv.setFields(fields);
 				TaintAdapter custom = null;
 				lvs = new LocalVariableManager(access, newDesc, tmv, analyzer,mv, generateExtraLVDebug);
@@ -608,6 +610,11 @@ public class TaintTrackingClassVisitor extends ClassVisitor {
 	@Override
 	public void visitEnd() {
 
+		for(MethodNode mn : wrapperMethodsToAdd)
+		{
+			mn.accept(this);
+		}
+
 		if((isEnum || className.equals("java/lang/Enum")) && Configuration.WITH_ENUM_BY_VAL)
 		{
 			MethodVisitor mv = super.visitMethod(Opcodes.ACC_PUBLIC, "clone", "()Ljava/lang/Object;", null, new String[]{"java/lang/CloneNotSupportedException"});
@@ -687,7 +694,7 @@ public class TaintTrackingClassVisitor extends ClassVisitor {
 			superMethodsToOverride.remove("equals(Ljava/lang/Object;)Z");
 			methodsToAddWrappersFor.add(new MethodNode(Opcodes.ACC_PUBLIC | Opcodes.ACC_NATIVE, "equals", "(Ljava/lang/Object;)Z", null, null));
 			MethodVisitor mv;
-			mv = super.visitMethod(Opcodes.ACC_PUBLIC, "equals", "(Ljava/lang/Object;)Z", null, null);
+			mv = super.visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_SYNTHETIC, "equals", "(Ljava/lang/Object;)Z", null, null);
 			mv.visitCode();
 			Label start = new Label();
 			Label end = new Label();
@@ -968,12 +975,11 @@ public class TaintTrackingClassVisitor extends ClassVisitor {
 				if(returnType.getSort() == Type.VOID)
 				{
 					//Check to see if we are one of those annying lambdas with a void return but pre-allocated return obj passed
-					if(newArgs.getLast().getDescriptor().startsWith("Ledu/columbia/cs/psl/phosphor/struct/Lazy")
-						|| newArgs.getLast().getDescriptor().startsWith("Ledu/columbia/cs/psl/phosphor/struct/Tainted")){
+					if(newArgs.getLast().getDescriptor().startsWith("Ledu/columbia/cs/psl/phosphor/struct/Tainted")){
 						returnTypeToHackOnLambda = newArgs.removeLast();
 					}
 				}
-				if(returnType.getDescriptor().startsWith("Ledu/columbia/cs/psl/phosphor/struct/Lazy") || returnType.getDescriptor().startsWith("Ledu/columbia/cs/psl/phosphor/struct/Tainted"))
+				if(returnType.getDescriptor().startsWith("Ledu/columbia/cs/psl/phosphor/struct/Tainted"))
 				{
 					newArgs.removeLast();
 					//Need to change reuturn type...
@@ -982,13 +988,6 @@ public class TaintTrackingClassVisitor extends ClassVisitor {
 						t = returnType.getDescriptor().replace("Ledu/columbia/cs/psl/phosphor/struct/Tainted","");
 						t = t.replace("WithIntTag","");
 						t = t.replace("WithObjTag","");
-					}
-					else if(returnType.getDescriptor().contains("edu/columbia/cs/psl/phosphor/struct/Lazy"))
-					{
-						t = returnType.getDescriptor().replace("Ledu/columbia/cs/psl/phosphor/struct/Lazy","");
-						t = t.replace("IntTags","");
-						t = t.replace("ObjTags","");
-						t = "["+t;
 					}
 					t = t.replace(";","").replace("Int","I")
 							.replace("Byte","B")
@@ -1001,7 +1000,7 @@ public class TaintTrackingClassVisitor extends ClassVisitor {
 
 				}
 				if(Configuration.IMPLICIT_TRACKING && newArgs.size() > 0)
-					newArgs.pop();//remove controltaint tag
+					newArgs.removeLast();//remove controltaint tag
 				String newDesc = "(";
 				for(Type _t : newArgs)
 					newDesc+=_t.getDescriptor();
@@ -1029,18 +1028,13 @@ public class TaintTrackingClassVisitor extends ClassVisitor {
 				Type returnType = Type.getReturnType(m.desc);
 				Type origReturnType = returnType;
 				String t = returnType.getDescriptor();
-				if (returnType.getDescriptor().startsWith("Ledu/columbia/cs/psl/phosphor/struct/Lazy") || returnType.getDescriptor().startsWith("Ledu/columbia/cs/psl/phosphor/struct/Tainted")) {
+				if (returnType.getDescriptor().startsWith("Ledu/columbia/cs/psl/phosphor/struct/Tainted")) {
 					newArgs.removeLast();
 					//Need to change return type...
 					if (returnType.getDescriptor().contains("edu/columbia/cs/psl/phosphor/struct/Tainted")) {
 						t = returnType.getDescriptor().replace("Ledu/columbia/cs/psl/phosphor/struct/Tainted", "");
 						t = t.replace("WithIntTag", "");
 						t = t.replace("WithObjTag", "");
-					} else if (returnType.getDescriptor().contains("edu/columbia/cs/psl/phosphor/struct/Lazy")) {
-						t = returnType.getDescriptor().replace("Ledu/columbia/cs/psl/phosphor/struct/Lazy", "");
-						t = t.replace("IntTags", "");
-						t = t.replace("ObjTags", "");
-						t = "[" + t;
 					}
 					t = t.replace(";", "").replace("Int", "I")
 							.replace("Byte", "B")
@@ -1051,14 +1045,20 @@ public class TaintTrackingClassVisitor extends ClassVisitor {
 							.replace("Double", "D");
 					origReturnType = Type.getType(t);
 				}
+				if(returnType.getSort() == Type.VOID)
+				{
+					//Check to see if we are one of those annying lambdas with a void return but pre-allocated return obj passed
+					if(newArgs.getLast().getDescriptor().startsWith("Ledu/columbia/cs/psl/phosphor/struct/Tainted")){
+						newArgs.removeLast();
+					}
+				}
+				if (Configuration.IMPLICIT_TRACKING && newArgs.size() > 0)
+					newArgs.removeLast();//remove controltaint tag
 				String newDesc = "(";
 				for (Type _t : newArgs)
 					newDesc += _t.getDescriptor();
 				newDesc += ")";
 				newDesc += t;
-
-				if (Configuration.IMPLICIT_TRACKING && newArgs.size() > 0)
-					newArgs.removeLast();//remove controltaint tag
 
 				newDesc = TaintUtils.remapMethodDescAndIncludeReturnHolder(newDesc);
 				if (newDesc.equals(m.desc))

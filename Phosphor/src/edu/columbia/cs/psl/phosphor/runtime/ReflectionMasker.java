@@ -1478,6 +1478,9 @@ public class ReflectionMasker {
 				else if(!matched)
 					ret.add(f);
 			} else if (!match) {
+				if(chars.length == 6 && chars[0] == 'e' && chars[1] == 'q'
+				&& chars[2] == 'u' && chars[3] == 'a' && chars[4] == 'l' && chars[5] == 's' && f.isSynthetic())
+					continue;
 				ret.add(f);
 			}
 		}
@@ -1498,8 +1501,9 @@ public class ReflectionMasker {
 					&& (params[params.length - 1].getName().equals("edu.columbia.cs.psl.phosphor.runtime.TaintSentinel") || params[params.length - 1].getName().equals(
 							"edu.columbia.cs.psl.phosphor.runtime.UninstrumentedTaintSentinel"))) {
 
-			} else
+			} else {
 				ret.add(f);
+			}
 		}
 		Constructor[] retz = new Constructor[ret.size()];
 		ret.toArray(retz);

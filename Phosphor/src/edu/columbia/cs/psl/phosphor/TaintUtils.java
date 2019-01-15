@@ -781,6 +781,90 @@ public class TaintUtils {
 
 	public static String remapMethodDescAndIncludeReturnHolder(String desc) {
 		String r = "(";
+		boolean ctrlAdded = !(Configuration.IMPLICIT_TRACKING || Configuration.IMPLICIT_HEADERS_NO_TRACKING);
+		for (Type t : Type.getArgumentTypes(desc)) {
+			if (t.getSort() == Type.ARRAY) {
+				if (t.getElementType().getSort() != Type.OBJECT && t.getDimensions() == 1)
+					r += getShadowTaintType(t.getDescriptor());
+			} else if (t.getSort() != Type.OBJECT) {
+				r += getShadowTaintType(t.getDescriptor());
+			}
+			if(!ctrlAdded && t.getDescriptor().startsWith("Ledu/columbia/cs/psl/phosphor/struct/Tainted"))
+			{
+				ctrlAdded = true;
+				r += Type.getDescriptor(ControlTaintTagStack.class);
+			}
+			if (t.getSort() == Type.ARRAY && t.getElementType().getSort() != Type.OBJECT && t.getDimensions() > 1) {
+				r += MultiDTaintedArray.getTypeForType(t);
+			} else
+				r += t;
+		}
+		if (!ctrlAdded)
+			r += Type.getDescriptor(ControlTaintTagStack.class);
+		if (isPrimitiveType(Type.getReturnType(desc)))
+			r += getContainerReturnType(Type.getReturnType(desc)).getDescriptor();
+		r += ")" + getContainerReturnType(Type.getReturnType(desc)).getDescriptor();
+		return r;
+	}
+
+	public static String remapMethodDescAndIncludeReturnHolderPrimitiveReturnBoxing(String desc) {
+		String r = "(";
+		boolean ctrlAdded = !(Configuration.IMPLICIT_TRACKING || Configuration.IMPLICIT_HEADERS_NO_TRACKING);
+		for (Type t : Type.getArgumentTypes(desc)) {
+			if (t.getSort() == Type.ARRAY) {
+				if (t.getElementType().getSort() != Type.OBJECT && t.getDimensions() == 1)
+					r += getShadowTaintType(t.getDescriptor());
+			} else if (t.getSort() != Type.OBJECT) {
+				r += getShadowTaintType(t.getDescriptor());
+			}
+			if(!ctrlAdded && t.getDescriptor().startsWith("Ledu/columbia/cs/psl/phosphor/struct/Tainted"))
+			{
+				ctrlAdded = true;
+				r += Type.getDescriptor(ControlTaintTagStack.class);
+			}
+			if (t.getSort() == Type.ARRAY && t.getElementType().getSort() != Type.OBJECT && t.getDimensions() > 1) {
+				r += MultiDTaintedArray.getTypeForType(t);
+			} else
+				r += t;
+		}
+		if (!ctrlAdded)
+			r += Type.getDescriptor(ControlTaintTagStack.class);
+		r += ")";
+		if (isPrimitiveArrayType(Type.getReturnType(desc)))
+			r += getContainerReturnType(Type.getReturnType(desc)).getDescriptor();
+		else if (isPrimitiveType(Type.getReturnType(desc)))
+			switch (Type.getReturnType(desc).getSort()) {
+				case Type.CHAR:
+					r += "Ljava/lang/Character;";
+					break;
+				case Type.BOOLEAN:
+					r += "Ljava/lang/Boolean;";
+					break;
+				case Type.DOUBLE:
+					r += "Ljava/lang/Double;";
+					break;
+				case Type.FLOAT:
+					r += "Ljava/lang/Float;";
+					break;
+				case Type.LONG:
+					r += "Ljava/lang/Long;";
+					break;
+				case Type.INT:
+					r += "Ljava/lang/Integer;";
+					break;
+				case Type.SHORT:
+					r += "Ljava/lang/Short;";
+					break;
+				case Type.BYTE:
+					r += "Ljava/lang/Byte;";
+			}
+		else
+			r += Type.getReturnType(desc).getDescriptor();
+		return r;
+	}
+
+	public static String remapMethodDescAndIncludeReturnHolderInit(String desc) {
+		String r = "(";
 		for (Type t : Type.getArgumentTypes(desc)) {
 			if (t.getSort() == Type.ARRAY) {
 				if (t.getElementType().getSort() != Type.OBJECT && t.getDimensions() == 1)
@@ -795,7 +879,8 @@ public class TaintUtils {
 		}
 		if (Configuration.IMPLICIT_TRACKING || Configuration.IMPLICIT_HEADERS_NO_TRACKING)
 			r += Type.getDescriptor(ControlTaintTagStack.class);
-		if (isPrimitiveOrPrimitiveArrayType(Type.getReturnType(desc)))
+		r += Type.getDescriptor(TaintSentinel.class);
+		if (isPrimitiveType(Type.getReturnType(desc)))
 			r += getContainerReturnType(Type.getReturnType(desc)).getDescriptor();
 		r += ")" + getContainerReturnType(Type.getReturnType(desc)).getDescriptor();
 		return r;
@@ -815,7 +900,7 @@ public class TaintUtils {
 			} else
 				r += t;
 		}
-		if (isPrimitiveOrPrimitiveArrayType(Type.getReturnType(desc)))
+		if (isPrimitiveType(Type.getReturnType(desc)))
 			r += getContainerReturnType(Type.getReturnType(desc)).getDescriptor();
 		r += ")" + getContainerReturnType(Type.getReturnType(desc)).getDescriptor();
 		return r;
